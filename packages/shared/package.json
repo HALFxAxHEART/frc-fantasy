@@ -1,0 +1,13 @@
+{
+  "name": "@frc-fantasy/shared",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

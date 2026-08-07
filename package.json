@@ -1,0 +1,24 @@
+{
+  "name": "frc-fantasy",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun --filter '*' dev",
+    "dev:server": "bun --cwd apps/server dev",
+    "dev:web": "bun --cwd apps/web dev",
+    "build": "bun --cwd apps/web build && bun --cwd apps/server build",
+    "db:generate": "bun --cwd packages/db generate",
+    "db:migrate": "bun --cwd packages/db migrate",
+    "db:studio": "bun --cwd packages/db studio",
+    "jobs:ingest": "bun apps/server/src/ingestion/jobs/daily-ingest.ts",
+    "jobs:trade-window-open": "bun apps/server/src/ingestion/jobs/trade-window-open.ts",
+    "jobs:trade-window-close": "bun apps/server/src/ingestion/jobs/trade-window-close.ts",
+    "typecheck": "bun --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
