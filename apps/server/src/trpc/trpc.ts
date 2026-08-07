@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Context } from "./context";
-import { NotFoundError, NotImplementedError, ValidationError } from "../lib/errors";
+import { ForbiddenError, NotFoundError, NotImplementedError, ValidationError } from "../lib/errors";
 
 const t = initTRPC.context<Context>().create();
 
@@ -23,6 +23,7 @@ const errorMappingMiddleware = t.middleware(async ({ next }) => {
     const cause = result.error.cause;
     if (cause instanceof NotFoundError) throw new TRPCError({ code: "NOT_FOUND", message: cause.message, cause });
     if (cause instanceof ValidationError) throw new TRPCError({ code: "BAD_REQUEST", message: cause.message, cause });
+    if (cause instanceof ForbiddenError) throw new TRPCError({ code: "FORBIDDEN", message: cause.message, cause });
     if (cause instanceof NotImplementedError)
       throw new TRPCError({ code: "NOT_IMPLEMENTED", message: cause.message, cause });
   }

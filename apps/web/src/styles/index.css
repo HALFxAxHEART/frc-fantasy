@@ -380,3 +380,167 @@ td {
   text-align: center;
   padding: 3rem 1.5rem;
 }
+
+.draft-room {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.draft-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.draft-controls .form-error {
+  margin: 0;
+}
+
+.draft-board {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.draft-board-column {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.draft-board-column-header {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0 0.25rem;
+}
+
+.draft-pick-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  min-height: 64px;
+  cursor: default;
+}
+
+.draft-pick-card.filled {
+  cursor: pointer;
+}
+
+.draft-pick-card.filled:hover {
+  background: var(--surface-hover);
+}
+
+.draft-pick-card.current {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.draft-pick-manager {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.draft-pick-team {
+  font-weight: 600;
+}
+
+.draft-pick-clock {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.draft-pick-empty {
+  font-size: 0.85rem;
+}
+
+.team-pool-panel input {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.team-pool-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.team-pool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.team-pool-name {
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 0;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
+  flex: 1;
+}
+
+.force-assign-button {
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 100;
+}
+
+.modal-content {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  width: 100%;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  color: var(--text);
+}

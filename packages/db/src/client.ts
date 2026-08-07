@@ -12,3 +12,5 @@ const client = new SQL(requireEnv("DATABASE_URL"));
 
 export const db = drizzle({ client, schema });
 export type Database = typeof db;
+/** The type of the `tx` callback param passed to `db.transaction(async (tx) => ...)`. */
+export type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];

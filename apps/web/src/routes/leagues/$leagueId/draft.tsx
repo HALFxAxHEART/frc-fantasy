@@ -1,17 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ComingSoon } from "../../../components/ComingSoon";
+import { DraftRoom } from "../../../features/draft/DraftRoom";
 
 export const Route = createFileRoute("/leagues/$leagueId/draft")({
   component: DraftPage,
 });
 
 function DraftPage() {
+  const { leagueId } = Route.useParams();
   return (
     <div className="page">
-      <ComingSoon
-        title="Draft Room"
-        description="The live snake draft, Kanban-style board, and pick trading land here."
-      />
+      <DraftRoom leagueId={leagueId} />
     </div>
   );
 }

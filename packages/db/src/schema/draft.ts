@@ -34,6 +34,8 @@ export const drafts = pgTable("drafts", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
   currentPickNumber: integer("current_pick_number").notNull().default(1),
   secondsPerPick: integer("seconds_per_pick").notNull().default(90),
+  /** Null while scheduled/paused/completed; now()+secondsPerPick while a pick is live. */
+  currentPickDeadline: timestamp("current_pick_deadline", { withTimezone: true }),
   /** Ordered array of league_member ids, one full round of the snake order. */
   pickOrder: jsonb("pick_order").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

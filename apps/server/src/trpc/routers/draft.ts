@@ -1,25 +1,51 @@
 import { z } from "zod";
 import * as draftService from "../../services/draft";
+import { broadcastDraftUpdate } from "../../ws/broadcast";
 import { protectedProcedure, router } from "../trpc";
 
+const leagueIdInput = z.object({ leagueId: z.string().uuid() });
+const pickInput = z.object({ leagueId: z.string().uuid(), teamKey: z.string() });
+
 export const draftRouter = router({
-  getState: protectedProcedure
-    .input(z.object({ leagueId: z.string().uuid() }))
-    .query(({ input }) => draftService.getDraftState(input.leagueId)),
+  getState: protectedProcedure.input(leagueIdInput).query(({ input, ctx }) => draftService.getDraftState(input.leagueId, ctx.user.id)),
 
-  create: protectedProcedure
-    .input(z.object({ leagueId: z.string().uuid() }))
-    .mutation(({ input }) => draftService.createDraft(input.leagueId)),
+  getAvailablePool: protectedProcedure
+    .input(leagueIdInput.extend({ query: z.string().optional() }))
+    .query(({ input, ctx }) => draftService.getAvailablePool(input.leagueId, ctx.user.id, input.query)),
 
-  makePick: protectedProcedure
-    .input(z.object({ draftId: z.string().uuid(), teamKey: z.string() }))
-    .mutation(({ input }) => draftService.makePick(input.draftId, input.teamKey)),
+  create: protectedProcedure.input(leagueIdInput).mutation(async ({ input, ctx }) => {
+    const draft = await draftService.createDraft(input.leagueId, ctx.user.id);
+    broadcastDraftUpdate(input.leagueId);
+    return draft;
+  }),
 
-  pause: protectedProcedure
-    .input(z.object({ draftId: z.string().uuid() }))
-    .mutation(({ input }) => draftService.pauseDraft(input.draftId)),
+  makePick: protectedProcedure.input(pickInput).mutation(async ({ input, ctx }) => {
+    const pick = await draftService.makePick(input.leagueId, input.teamKey, ctx.user.id);
+    broadcastDraftUpdate(input.leagueId);
+    return pick;
+  }),
 
-  undo: protectedProcedure
-    .input(z.object({ draftId: z.string().uuid() }))
-    .mutation(({ input }) => draftService.undoLastPick(input.draftId)),
+  forceAssign: protectedProcedure.input(pickInput).mutation(async ({ input, ctx }) => {
+    const pick = await draftService.forceAssignPick(input.leagueId, input.teamKey, ctx.user.id);
+    broadcastDraftUpdate(input.leagueId);
+    return pick;
+  }),
+
+  pause: protectedProcedure.input(leagueIdInput).mutation(async ({ input, ctx }) => {
+    const draft = await draftService.pauseDraft(input.leagueId, ctx.user.id);
+    broadcastDraftUpdate(input.leagueId);
+    return draft;
+  }),
+
+  resume: protectedProcedure.input(leagueIdInput).mutation(async ({ input, ctx }) => {
+    const draft = await draftService.resumeDraft(input.leagueId, ctx.user.id);
+    broadcastDraftUpdate(input.leagueId);
+    return draft;
+  }),
+
+  undo: protectedProcedure.input(leagueIdInput).mutation(async ({ input, ctx }) => {
+    const draft = await draftService.undoLastPick(input.leagueId, ctx.user.id);
+    broadcastDraftUpdate(input.leagueId);
+    return draft;
+  }),
 });

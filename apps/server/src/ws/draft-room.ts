@@ -10,9 +10,9 @@ export interface DraftRoomSocketData {
 const DRAFT_ROOM_PATH = /^\/ws\/draft\/([^/]+)$/;
 
 /**
- * STUB — the upgrade route, connection lifecycle, and per-league socket bookkeeping
- * are real; the actual draft protocol (pick broadcasts, clock, trades) ships in a
- * follow-up session. Keeping this wired now means that work is additive, not new infra.
+ * Push-only change signal (see ws/broadcast.ts) — clients never send draft actions
+ * over this socket, only tRPC mutations do that. `message` is effectively unused;
+ * a client "ping" gets a "pong" back purely as a liveness nicety.
  */
 export function tryUpgradeDraftRoom(req: Request, server: Server<DraftRoomSocketData>): boolean {
   const url = new URL(req.url);
@@ -24,12 +24,16 @@ export function tryUpgradeDraftRoom(req: Request, server: Server<DraftRoomSocket
 }
 
 export const draftRoomWebSocketHandlers = {
+  // Bun already defaults sendPings:true; a shorter idleTimeout just means dead
+  // connections (laptop sleep, etc.) get cleaned up server-side faster, which
+  // triggers the client's close→reconnect path sooner.
+  idleTimeout: 60,
   open(ws: ServerWebSocket<DraftRoomSocketData>) {
-    logger.info("draft room socket opened (stub — no draft logic yet)", { leagueId: ws.data.leagueId });
+    logger.info("draft room socket opened", { leagueId: ws.data.leagueId });
     ws.subscribe(`draft:${ws.data.leagueId}`);
   },
-  message(ws: ServerWebSocket<DraftRoomSocketData>, _message: string | Buffer) {
-    ws.send(JSON.stringify({ type: "not_implemented", message: "Draft room is not live yet." }));
+  message(ws: ServerWebSocket<DraftRoomSocketData>, message: string | Buffer) {
+    if (message.toString() === "ping") ws.send("pong");
   },
   close(ws: ServerWebSocket<DraftRoomSocketData>) {
     ws.unsubscribe(`draft:${ws.data.leagueId}`);

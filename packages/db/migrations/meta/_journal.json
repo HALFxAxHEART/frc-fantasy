@@ -8,6 +8,13 @@
       "when": 1786125238498,
       "tag": "0000_abnormal_lady_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786144380580,
+      "tag": "0001_ancient_colleen_wing",
+      "breakpoints": true
     }
   ]
 }

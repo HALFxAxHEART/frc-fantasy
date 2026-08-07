@@ -4,7 +4,9 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./trpc/router";
 import { createContext } from "./trpc/context";
 import { getTeamAvatar } from "./services/team";
+import { sweepExpiredDraftPicks } from "./services/draft/autopick";
 import { draftRoomWebSocketHandlers, tryUpgradeDraftRoom } from "./ws/draft-room";
+import { setBroadcastServer } from "./ws/broadcast";
 import { runDailyIngest } from "./ingestion/jobs/daily-ingest";
 
 const logger = createLogger("server");
@@ -63,6 +65,14 @@ const server = Bun.serve({
 });
 
 logger.info("server listening", { port: server.port, env: env.NODE_ENV });
+
+setBroadcastServer(server);
+
+// Always on, not gated by JOBS_MODE — that flag is for Coolify-cron-replaceable
+// batch jobs; this is live gameplay needing sub-minute granularity.
+setInterval(() => {
+  sweepExpiredDraftPicks().catch((err) => logger.error("draft autopick sweep failed", { error: String(err) }));
+}, 3000);
 
 if (env.JOBS_MODE === "in-process") {
   logger.info("JOBS_MODE=in-process — dev-only fallback timer active (Coolify Scheduled Tasks unavailable locally)");

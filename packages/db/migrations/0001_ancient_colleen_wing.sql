@@ -1,0 +1,1 @@
+ALTER TABLE "drafts" ADD COLUMN "current_pick_deadline" timestamp with time zone;
