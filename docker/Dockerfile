@@ -24,4 +24,4 @@ COPY . .
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 
 EXPOSE 3000
-CMD ["bun", "apps/server/src/index.ts"]
+CMD ["sh", "-c", "bun --cwd packages/db run migrate && bun apps/server/src/index.ts"]
