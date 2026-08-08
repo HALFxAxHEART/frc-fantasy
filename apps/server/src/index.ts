@@ -77,6 +77,7 @@ setInterval(() => {
 if (env.JOBS_MODE === "in-process") {
   logger.info("JOBS_MODE=in-process — dev-only fallback timer active (Coolify Scheduled Tasks unavailable locally)");
   const ONE_HOUR_MS = 60 * 60 * 1000;
+  runDailyIngest().catch((err) => logger.error("in-process daily-ingest run failed", { error: String(err) }));
   setInterval(() => {
     runDailyIngest().catch((err) => logger.error("in-process daily-ingest run failed", { error: String(err) }));
   }, ONE_HOUR_MS);
