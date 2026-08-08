@@ -107,6 +107,18 @@ export interface TbaMatchSimple {
   winning_alliance: string;
 }
 
+export interface TbaDistrictPointsEntry {
+  alliance_points: number;
+  award_points: number;
+  elim_points: number;
+  qual_points: number;
+  total: number;
+}
+
+export interface TbaDistrictPoints {
+  points: Record<string, TbaDistrictPointsEntry>;
+}
+
 async function tbaGet<T>(path: string): Promise<T> {
   await bucket.take();
   return cachedFetch<T>({
@@ -139,4 +151,8 @@ export const tbaClient = {
   getEventRankings: (eventKey: string) => tbaGet<TbaRanking>(`/event/${eventKey}/rankings`),
   getEventOprs: (eventKey: string) => tbaGet<TbaOprs>(`/event/${eventKey}/oprs`),
   getEventAwards: (eventKey: string) => tbaGet<TbaAward[]>(`/event/${eventKey}/awards`),
+  getEventDistrictPoints: (eventKey: string) =>
+    tbaGet<TbaDistrictPoints>(`/event/${eventKey}/district_points`),
+  getTeamEventsForYear: (teamKey: string, year: number) =>
+    tbaGet<string[]>(`/team/${teamKey}/events/${year}/keys`),
 };

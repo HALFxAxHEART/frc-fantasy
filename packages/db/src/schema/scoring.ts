@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { integer, numeric, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { index, integer, numeric, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { leagueMembers, leagues } from "./leagues";
 import { events, teams } from "./tba-cache";
 
@@ -36,26 +36,35 @@ export const teamEventScores = pgTable(
     allianceSelectionPoints: numeric("alliance_selection_points").notNull().default("0"),
     playoffPoints: numeric("playoff_points").notNull().default("0"),
     awardPoints: numeric("award_points").notNull().default("0"),
-    rookieBonusPoints: numeric("rookie_bonus_points").notNull().default("0"),
     totalPoints: numeric("total_points").notNull().default("0"),
     computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("team_event_scores_unique").on(t.teamKey, t.eventKey)],
+  (t) => [
+    unique("team_event_scores_unique").on(t.teamKey, t.eventKey),
+    index("team_event_scores_event_idx").on(t.eventKey),
+  ],
 );
 
 /** Per-league aggregation of a manager's rostered teams' scores. Null eventKey = season aggregate. */
-export const managerScores = pgTable("manager_scores", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  leagueId: uuid("league_id")
-    .notNull()
-    .references(() => leagues.id, { onDelete: "cascade" }),
-  leagueMemberId: uuid("league_member_id")
-    .notNull()
-    .references(() => leagueMembers.id, { onDelete: "cascade" }),
-  eventKey: text("event_key").references(() => events.key),
-  totalPoints: numeric("total_points").notNull().default("0"),
-  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const managerScores = pgTable(
+  "manager_scores",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    leagueMemberId: uuid("league_member_id")
+      .notNull()
+      .references(() => leagueMembers.id, { onDelete: "cascade" }),
+    eventKey: text("event_key").references(() => events.key),
+    totalPoints: numeric("total_points").notNull().default("0"),
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("manager_scores_league_member_idx").on(t.leagueId, t.leagueMemberId),
+    index("manager_scores_league_event_idx").on(t.leagueId, t.eventKey),
+  ],
+);
 
 export const scoringRulesetsRelations = relations(scoringRulesets, ({ one }) => ({
   league: one(leagues, { fields: [scoringRulesets.leagueId], references: [leagues.id] }),

@@ -5,7 +5,7 @@ import { createLogger } from "../../lib/logger";
 
 const logger = createLogger("service:event");
 
-async function ensureEventsForYearCached(year: number) {
+export async function ensureEventsForYearCached(year: number) {
   const [existing] = await db
     .select({ key: schema.events.key })
     .from(schema.events)
@@ -71,23 +71,27 @@ export async function listUpcomingEvents(year?: number) {
     .limit(100);
 }
 
-export async function getEventTeams(eventKey: string) {
+export async function ensureEventTeamsCached(eventKey: string) {
   const [existing] = await db
     .select({ teamKey: schema.eventTeams.teamKey })
     .from(schema.eventTeams)
     .where(eq(schema.eventTeams.eventKey, eventKey))
     .limit(1);
 
-  if (!existing) {
-    try {
-      const teamKeys = await tbaClient.getEventTeamKeys(eventKey);
-      for (const teamKey of teamKeys) {
-        await db.insert(schema.eventTeams).values({ eventKey, teamKey }).onConflictDoNothing();
-      }
-    } catch (err) {
-      logger.warn("failed to lazily fetch event teams", { eventKey, error: String(err) });
+  if (existing) return;
+
+  try {
+    const teamKeys = await tbaClient.getEventTeamKeys(eventKey);
+    for (const teamKey of teamKeys) {
+      await db.insert(schema.eventTeams).values({ eventKey, teamKey }).onConflictDoNothing();
     }
+  } catch (err) {
+    logger.warn("failed to lazily fetch event teams", { eventKey, error: String(err) });
   }
+}
+
+export async function getEventTeams(eventKey: string) {
+  await ensureEventTeamsCached(eventKey);
 
   return db
     .select({ team: schema.teams })

@@ -1,6 +1,7 @@
 import { db, schema } from "@frc-fantasy/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { createLogger } from "../../lib/logger";
+import { syncEventDistrictPoints } from "../../services/scoring/team-event-scores";
 import { tbaClient, type TbaEvent } from "../tba-client";
 
 const logger = createLogger("jobs:daily-ingest");
@@ -268,6 +269,8 @@ async function syncEventDetail(eventKey: string): Promise<Set<string>> {
       touchedTeamKeys.add(recipient.team_key);
     }
   }
+
+  await syncEventDistrictPoints(eventKey);
 
   return touchedTeamKeys;
 }

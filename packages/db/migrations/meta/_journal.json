@@ -15,6 +15,13 @@
       "when": 1786144380580,
       "tag": "0001_ancient_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786196627899,
+      "tag": "0002_colossal_impossible_man",
+      "breakpoints": true
     }
   ]
 }

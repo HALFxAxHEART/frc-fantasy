@@ -544,3 +544,25 @@ td {
 .modal-close:hover {
   color: var(--text);
 }
+
+.standings-freshness {
+  margin-bottom: 1rem;
+}
+
+.standings-row {
+  cursor: pointer;
+}
+
+.standings-row:hover {
+  background: var(--surface-hover);
+}
+
+.standings-detail-row td {
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.standings-detail-table {
+  width: auto;
+  min-width: 260px;
+}

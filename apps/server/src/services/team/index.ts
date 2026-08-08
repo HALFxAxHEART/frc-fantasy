@@ -107,7 +107,7 @@ async function ensureEpaHistoryCached(teamNumber: number, teamKey: string) {
  * ingested yet (common for historical awards from years we don't actively sync)
  * would otherwise fail that constraint. This backfills a minimal event row on demand.
  */
-async function ensureEventStubCached(eventKey: string) {
+export async function ensureEventCached(eventKey: string) {
   const [existing] = await db
     .select({ key: schema.events.key })
     .from(schema.events)
@@ -169,7 +169,7 @@ async function ensureAwardsCached(teamKey: string) {
       if (!seenEventKeys.has(a.event_key)) {
         seenEventKeys.add(a.event_key);
         try {
-          await ensureEventStubCached(a.event_key);
+          await ensureEventCached(a.event_key);
         } catch (err) {
           logger.warn("failed to backfill event stub for award", { eventKey: a.event_key, error: String(err) });
           continue;

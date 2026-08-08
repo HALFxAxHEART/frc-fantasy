@@ -1,17 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ComingSoon } from "../../../components/ComingSoon";
+import { StandingsBoard } from "../../../features/scoring/StandingsBoard";
 
 export const Route = createFileRoute("/leagues/$leagueId/standings")({
   component: StandingsPage,
 });
 
 function StandingsPage() {
+  const { leagueId } = Route.useParams();
   return (
     <div className="page">
-      <ComingSoon
-        title="Standings"
-        description="District-points scoring, manager totals, and tiebreakers land here."
-      />
+      <StandingsBoard leagueId={leagueId} />
     </div>
   );
 }

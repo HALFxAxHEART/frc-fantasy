@@ -5,3 +5,6 @@ build/
 .env.local
 *.log
 .DS_Store
+*.tsbuildinfo
+# tsc -b (run before vite build) emits .js next to .tsx with no outDir configured
+apps/web/src/**/*.js
