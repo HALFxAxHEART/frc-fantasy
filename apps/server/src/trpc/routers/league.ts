@@ -25,23 +25,25 @@ export const leagueRouter = router({
     .input(joinLeagueSchema)
     .mutation(({ input, ctx }) => joinLeagueByInviteCode(input.inviteCode, ctx.user.id, input.teamName)),
 
-  getById: protectedProcedure.input(leagueIdInput).query(({ input, ctx }) => getLeagueById(input.leagueId, ctx.user.id)),
+  getById: protectedProcedure
+    .input(leagueIdInput)
+    .query(({ input, ctx }) => getLeagueById(input.leagueId, ctx.user.id, ctx.user.email)),
 
   listMine: protectedProcedure.query(({ ctx }) => listMyLeagues(ctx.user.id)),
 
   listMembers: protectedProcedure
     .input(leagueIdInput)
-    .query(({ input, ctx }) => listMembers(input.leagueId, ctx.user.id)),
+    .query(({ input, ctx }) => listMembers(input.leagueId, ctx.user.id, ctx.user.email)),
 
   delete: protectedProcedure
     .input(leagueIdInput)
-    .mutation(({ input, ctx }) => deleteLeague(input.leagueId, ctx.user.id)),
+    .mutation(({ input, ctx }) => deleteLeague(input.leagueId, ctx.user.id, ctx.user.email)),
 
   kickMember: protectedProcedure
     .input(leagueIdInput.extend({ memberId: z.string().uuid() }))
-    .mutation(({ input, ctx }) => kickMember(input.leagueId, input.memberId, ctx.user.id)),
+    .mutation(({ input, ctx }) => kickMember(input.leagueId, input.memberId, ctx.user.id, ctx.user.email)),
 
   updateSettings: protectedProcedure
     .input(leagueIdInput.extend({ settings: updateLeagueSettingsSchema }))
-    .mutation(({ input, ctx }) => updateLeagueSettings(input.leagueId, ctx.user.id, input.settings)),
+    .mutation(({ input, ctx }) => updateLeagueSettings(input.leagueId, ctx.user.id, input.settings, ctx.user.email)),
 });

@@ -360,6 +360,17 @@ td {
   text-transform: capitalize;
 }
 
+.badge-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.admin-league-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .invite-code {
   background: var(--surface-hover);
   padding: 0.2rem 0.5rem;
@@ -623,6 +634,27 @@ td {
   overflow-y: auto;
   position: relative;
   width: 100%;
+}
+
+.confirm-dialog {
+  max-width: 420px;
+}
+
+.confirm-dialog h2 {
+  margin-top: 0;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.secondary-button {
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .modal-close {

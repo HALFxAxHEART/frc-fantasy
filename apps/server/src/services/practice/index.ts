@@ -28,6 +28,7 @@ const BOT_NAMES = ["Bot Alpha", "Bot Bravo", "Bot Charlie", "Bot Delta", "Bot Ec
 export async function createPracticeDraft(
   input: CreatePracticeDraftInput,
   userId: string,
+  userEmail: string,
 ): Promise<{ leagueId: string; draft: Draft }> {
   const name = `Practice Draft — ${input.tbaEventKey ?? input.districtKey ?? input.seasonYear}`;
   const league = await createLeague({ ...input, name }, userId, input.commissionerTeamName);
@@ -46,7 +47,7 @@ export async function createPracticeDraft(
       }
     });
 
-    const draft = await createDraft(league.id, userId);
+    const draft = await createDraft(league.id, userId, userEmail);
 
     warmPoolEpaInBackground(league);
 

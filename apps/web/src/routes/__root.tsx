@@ -23,6 +23,7 @@ function RootLayout() {
         </Link>
         <Link to="/teams">Team Analytics</Link>
         <Link to="/leagues">My Leagues</Link>
+        {user?.isAdmin && <Link to="/admin">Admin</Link>}
         <div className="nav-spacer" />
         {isLoading ? null : user ? (
           <span className="nav-user">{user.displayName}</span>

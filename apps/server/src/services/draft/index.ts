@@ -1,7 +1,7 @@
 import { db, schema } from "@frc-fantasy/db";
 import { and, eq, ilike, inArray, notInArray } from "drizzle-orm";
-import { ForbiddenError, ValidationError } from "../../lib/errors";
-import { requireMembership } from "../league";
+import { ValidationError } from "../../lib/errors";
+import { requireCommissionerOrAdmin, requireMembership, requireMembershipOrAdmin } from "../league";
 import { rankAvailableTeamsByEpa } from "./bot";
 import { claimPick, getLeagueRow, getPickByNumber, lockDraft, pickDeadline, type Draft, type DraftPick } from "./core";
 import { alreadyDraftedKeys, poolSize, resolveDraftPool, type PoolTeam } from "./pool";
@@ -12,14 +12,12 @@ export interface EnrichedPick extends DraftPick {
   memberTeamName: string;
 }
 
-async function requireCommissioner(leagueId: string, userId: string) {
-  const member = await requireMembership(leagueId, userId);
-  if (member.role !== "commissioner") throw new ForbiddenError("Only the league commissioner can do that.");
-  return member;
-}
-
-export async function getDraftState(leagueId: string, userId: string): Promise<{ draft: Draft | null; picks: EnrichedPick[] }> {
-  await requireMembership(leagueId, userId);
+export async function getDraftState(
+  leagueId: string,
+  userId: string,
+  userEmail: string,
+): Promise<{ draft: Draft | null; picks: EnrichedPick[] }> {
+  await requireMembershipOrAdmin(leagueId, userId, userEmail);
 
   const [draft] = await db.select().from(schema.drafts).where(eq(schema.drafts.leagueId, leagueId)).limit(1);
   if (!draft) return { draft: null, picks: [] };
@@ -46,9 +44,10 @@ export async function getDraftState(leagueId: string, userId: string): Promise<{
 export async function getAvailablePool(
   leagueId: string,
   userId: string,
+  userEmail: string,
   query?: string,
 ): Promise<{ bounded: boolean; teams: PoolTeam[]; truncated: boolean }> {
-  await requireMembership(leagueId, userId);
+  await requireMembershipOrAdmin(leagueId, userId, userEmail);
   const league = await getLeagueRow(db, leagueId);
   const pool = await resolveDraftPool(league);
 
@@ -88,8 +87,13 @@ export async function getAvailablePool(
  * pools (practice drafts are restricted to those); returns empty for an unbounded
  * global season-long pool rather than trying to rank thousands of teams.
  */
-export async function getRecommendations(leagueId: string, userId: string, limit: number): Promise<PoolTeam[]> {
-  await requireMembership(leagueId, userId);
+export async function getRecommendations(
+  leagueId: string,
+  userId: string,
+  userEmail: string,
+  limit: number,
+): Promise<PoolTeam[]> {
+  await requireMembershipOrAdmin(leagueId, userId, userEmail);
 
   const league = await getLeagueRow(db, leagueId);
   const [draft] = await db.select({ id: schema.drafts.id }).from(schema.drafts).where(eq(schema.drafts.leagueId, leagueId)).limit(1);
@@ -100,8 +104,8 @@ export async function getRecommendations(leagueId: string, userId: string, limit
   return ranked.slice(0, limit);
 }
 
-export async function createDraft(leagueId: string, actingUserId: string): Promise<Draft> {
-  await requireCommissioner(leagueId, actingUserId);
+export async function createDraft(leagueId: string, actingUserId: string, actingUserEmail: string): Promise<Draft> {
+  await requireCommissionerOrAdmin(leagueId, actingUserId, actingUserEmail);
 
   const league = await getLeagueRow(db, leagueId);
   const members = await db.select().from(schema.leagueMembers).where(eq(schema.leagueMembers.leagueId, leagueId));
@@ -173,8 +177,13 @@ export async function makePick(leagueId: string, teamKey: string, actingUserId: 
   });
 }
 
-export async function forceAssignPick(leagueId: string, teamKey: string, actingUserId: string): Promise<DraftPick> {
-  await requireCommissioner(leagueId, actingUserId);
+export async function forceAssignPick(
+  leagueId: string,
+  teamKey: string,
+  actingUserId: string,
+  actingUserEmail: string,
+): Promise<DraftPick> {
+  await requireCommissionerOrAdmin(leagueId, actingUserId, actingUserEmail);
 
   return db.transaction(async (tx) => {
     const draft = await lockDraft(tx, leagueId);
@@ -188,8 +197,8 @@ export async function forceAssignPick(leagueId: string, teamKey: string, actingU
   });
 }
 
-export async function pauseDraft(leagueId: string, actingUserId: string): Promise<Draft> {
-  await requireCommissioner(leagueId, actingUserId);
+export async function pauseDraft(leagueId: string, actingUserId: string, actingUserEmail: string): Promise<Draft> {
+  await requireCommissionerOrAdmin(leagueId, actingUserId, actingUserEmail);
 
   return db.transaction(async (tx) => {
     const draft = await lockDraft(tx, leagueId);
@@ -204,8 +213,8 @@ export async function pauseDraft(leagueId: string, actingUserId: string): Promis
   });
 }
 
-export async function resumeDraft(leagueId: string, actingUserId: string): Promise<Draft> {
-  await requireCommissioner(leagueId, actingUserId);
+export async function resumeDraft(leagueId: string, actingUserId: string, actingUserEmail: string): Promise<Draft> {
+  await requireCommissionerOrAdmin(leagueId, actingUserId, actingUserEmail);
 
   return db.transaction(async (tx) => {
     const draft = await lockDraft(tx, leagueId);
@@ -226,8 +235,8 @@ export async function resumeDraft(leagueId: string, actingUserId: string): Promi
  * created. Locked the same way every other draft mutation is, so it can't race a
  * pick, an autopick sweep tick, or a bot pick landing mid-restart.
  */
-export async function restartDraft(leagueId: string, actingUserId: string): Promise<void> {
-  await requireCommissioner(leagueId, actingUserId);
+export async function restartDraft(leagueId: string, actingUserId: string, actingUserEmail: string): Promise<void> {
+  await requireCommissionerOrAdmin(leagueId, actingUserId, actingUserEmail);
 
   await db.transaction(async (tx) => {
     await lockDraft(tx, leagueId);

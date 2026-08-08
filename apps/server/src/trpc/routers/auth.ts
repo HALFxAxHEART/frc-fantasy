@@ -1,6 +1,7 @@
 import { loginSchema, registerSchema } from "@frc-fantasy/shared";
 import { loginUser, logoutSession, registerUser } from "../../services/auth";
 import { serializeClearedSessionCookie, serializeSessionCookie } from "../../lib/cookies";
+import { isAdminEmail } from "../../lib/admin";
 import { publicProcedure, protectedProcedure, router } from "../trpc";
 
 export const authRouter = router({
@@ -22,5 +23,5 @@ export const authRouter = router({
     return { success: true };
   }),
 
-  me: protectedProcedure.query(({ ctx }) => ({ user: ctx.user })),
+  me: protectedProcedure.query(({ ctx }) => ({ user: { ...ctx.user, isAdmin: isAdminEmail(ctx.user.email) } })),
 });

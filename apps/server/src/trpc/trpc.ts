@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Context } from "./context";
 import { ForbiddenError, NotFoundError, NotImplementedError, ValidationError } from "../lib/errors";
+import { isAdminEmail } from "../lib/admin";
 
 const t = initTRPC.context<Context>().create();
 
@@ -35,4 +36,9 @@ export const publicProcedure = t.procedure.use(errorMappingMiddleware);
 export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
   if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in required." });
   return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (!isAdminEmail(ctx.user.email)) throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required." });
+  return next({ ctx });
 });

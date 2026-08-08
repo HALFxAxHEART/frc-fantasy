@@ -10,6 +10,8 @@ const envSchema = z.object({
   COOKIE_DOMAIN: z.string().optional(),
   JOBS_MODE: z.enum(["coolify", "in-process"]).default("coolify"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  /** Comma-separated list of email addresses granted the site-wide admin panel. */
+  ADMIN_EMAILS: z.string().default(""),
 });
 
 /** Fails fast at boot rather than misbehaving later on missing/malformed config. */

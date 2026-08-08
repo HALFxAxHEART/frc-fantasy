@@ -7,6 +7,7 @@ import {
   type UpdateLeagueSettingsInput,
 } from "@frc-fantasy/shared";
 import { ForbiddenError, NotFoundError, ValidationError } from "../../lib/errors";
+import { isAdminEmail } from "../../lib/admin";
 
 function generateInviteCode(): string {
   let code = "";
@@ -110,8 +111,41 @@ export async function requireCommissioner(leagueId: string, userId: string) {
   return member;
 }
 
-export async function getLeagueById(leagueId: string, userId: string) {
-  await requireMembership(leagueId, userId);
+/**
+ * Every real-league operation (drafting, rostering, standings) stays strictly
+ * membership-gated via requireMembership/requireCommissioner above — an admin
+ * doesn't get to play in leagues they're not part of. These two variants exist
+ * only for the moderation surface (viewing/editing/deleting *any* league from the
+ * admin panel), where returning `null` means "acting as admin, not as a member."
+ */
+export async function requireMembershipOrAdmin(leagueId: string, userId: string, userEmail: string) {
+  const [member] = await db
+    .select()
+    .from(schema.leagueMembers)
+    .where(and(eq(schema.leagueMembers.leagueId, leagueId), eq(schema.leagueMembers.userId, userId)))
+    .limit(1);
+  if (member) return member;
+  if (isAdminEmail(userEmail)) return null;
+  throw new NotFoundError("League membership");
+}
+
+export async function requireCommissionerOrAdmin(leagueId: string, userId: string, userEmail: string) {
+  const [member] = await db
+    .select()
+    .from(schema.leagueMembers)
+    .where(and(eq(schema.leagueMembers.leagueId, leagueId), eq(schema.leagueMembers.userId, userId)))
+    .limit(1);
+  if (member) {
+    if (member.role === "commissioner") return member;
+    if (isAdminEmail(userEmail)) return null;
+    throw new ForbiddenError("Only the league commissioner can do that.");
+  }
+  if (isAdminEmail(userEmail)) return null;
+  throw new NotFoundError("League membership");
+}
+
+export async function getLeagueById(leagueId: string, userId: string, userEmail: string) {
+  await requireMembershipOrAdmin(leagueId, userId, userEmail);
   const [league] = await db.select().from(schema.leagues).where(eq(schema.leagues.id, leagueId)).limit(1);
   if (!league) throw new NotFoundError("League");
   return league;
@@ -125,19 +159,24 @@ export async function listMyLeagues(userId: string) {
     .where(eq(schema.leagueMembers.userId, userId));
 }
 
-export async function listMembers(leagueId: string, userId: string) {
-  await requireMembership(leagueId, userId);
+export async function listMembers(leagueId: string, userId: string, userEmail: string) {
+  await requireMembershipOrAdmin(leagueId, userId, userEmail);
   return db.select().from(schema.leagueMembers).where(eq(schema.leagueMembers.leagueId, leagueId));
 }
 
 /** Cascades to members/rosters/roster_slots/draft/draft_picks/scoring via FK cascades. */
-export async function deleteLeague(leagueId: string, userId: string): Promise<void> {
-  await requireCommissioner(leagueId, userId);
+export async function deleteLeague(leagueId: string, userId: string, userEmail: string): Promise<void> {
+  await requireCommissionerOrAdmin(leagueId, userId, userEmail);
   await db.delete(schema.leagues).where(eq(schema.leagues.id, leagueId));
 }
 
-export async function kickMember(leagueId: string, targetMemberId: string, actingUserId: string): Promise<void> {
-  await requireCommissioner(leagueId, actingUserId);
+export async function kickMember(
+  leagueId: string,
+  targetMemberId: string,
+  actingUserId: string,
+  actingUserEmail: string,
+): Promise<void> {
+  await requireCommissionerOrAdmin(leagueId, actingUserId, actingUserEmail);
 
   const [target] = await db
     .select()
@@ -160,9 +199,15 @@ export async function kickMember(leagueId: string, targetMemberId: string, actin
   await db.delete(schema.leagueMembers).where(eq(schema.leagueMembers.id, targetMemberId));
 }
 
-export async function updateLeagueSettings(leagueId: string, userId: string, input: UpdateLeagueSettingsInput) {
-  const league = await getLeagueById(leagueId, userId);
-  await requireCommissioner(leagueId, userId);
+export async function updateLeagueSettings(
+  leagueId: string,
+  userId: string,
+  input: UpdateLeagueSettingsInput,
+  userEmail: string,
+) {
+  await requireCommissionerOrAdmin(leagueId, userId, userEmail);
+  const [league] = await db.select().from(schema.leagues).where(eq(schema.leagues.id, leagueId)).limit(1);
+  if (!league) throw new NotFoundError("League");
 
   if (input.rosterSize !== undefined && input.rosterSize !== league.rosterSize && league.status !== "setup") {
     throw new ValidationError("Roster size can only be changed before the draft starts.");
