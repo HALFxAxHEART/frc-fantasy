@@ -196,24 +196,16 @@ async function syncEventDetail(eventKey: string): Promise<Set<string>> {
     }
   }
 
-  const rankingResponse = await tbaClient.getEventRankings(eventKey);
-  for (const r of rankingResponse.rankings ?? []) {
-    await db
-      .insert(schema.rankings)
-      .values({
-        eventKey,
-        teamKey: r.team_key,
-        rank: r.rank,
-        rankingPoints: String(r.sort_orders?.[0] ?? 0),
-        wins: r.record?.wins ?? 0,
-        losses: r.record?.losses ?? 0,
-        ties: r.record?.ties ?? 0,
-        played: r.matches_played,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [schema.rankings.eventKey, schema.rankings.teamKey],
-        set: {
+  try {
+    // TBA returns a bare null body (not {rankings: null}) for an event that hasn't
+    // started ranking play yet — not fatal, same as the OPR call below.
+    const rankingResponse = await tbaClient.getEventRankings(eventKey);
+    for (const r of rankingResponse?.rankings ?? []) {
+      await db
+        .insert(schema.rankings)
+        .values({
+          eventKey,
+          teamKey: r.team_key,
           rank: r.rank,
           rankingPoints: String(r.sort_orders?.[0] ?? 0),
           wins: r.record?.wins ?? 0,
@@ -221,8 +213,22 @@ async function syncEventDetail(eventKey: string): Promise<Set<string>> {
           ties: r.record?.ties ?? 0,
           played: r.matches_played,
           updatedAt: new Date(),
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: [schema.rankings.eventKey, schema.rankings.teamKey],
+          set: {
+            rank: r.rank,
+            rankingPoints: String(r.sort_orders?.[0] ?? 0),
+            wins: r.record?.wins ?? 0,
+            losses: r.record?.losses ?? 0,
+            ties: r.record?.ties ?? 0,
+            played: r.matches_played,
+            updatedAt: new Date(),
+          },
+        });
+    }
+  } catch (err) {
+    logger.warn("rankings unavailable for event", { eventKey, error: String(err) });
   }
 
   try {
