@@ -11,7 +11,7 @@ RUN bun install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
-RUN bun --cwd apps/web run build
+RUN cd apps/web && bun run build
 
 FROM base AS runtime
 ENV NODE_ENV=production
@@ -24,4 +24,4 @@ COPY . .
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 
 EXPOSE 3000
-CMD ["sh", "-c", "bun --cwd packages/db run migrate && bun apps/server/src/index.ts"]
+CMD ["sh", "-c", "cd packages/db && bun run migrate && cd /app && bun apps/server/src/index.ts"]
