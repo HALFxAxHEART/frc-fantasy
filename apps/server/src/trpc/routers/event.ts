@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eventSearchSchema } from "@frc-fantasy/shared";
-import { getEventTeams, listUpcomingEvents, searchEvents } from "../../services/event";
+import { getEventTeams, listDistricts, listUpcomingEvents, searchEvents } from "../../services/event";
 import { publicProcedure, router } from "../trpc";
 
 export const eventRouter = router({
@@ -11,6 +11,10 @@ export const eventRouter = router({
   listUpcoming: publicProcedure
     .input(z.object({ year: z.number().int().optional() }))
     .query(({ input }) => listUpcomingEvents(input.year)),
+
+  listDistricts: publicProcedure
+    .input(z.object({ year: z.number().int().optional() }))
+    .query(({ input }) => listDistricts(input.year)),
 
   getEventTeams: publicProcedure
     .input(z.object({ eventKey: z.string().trim().min(1) }))

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   check,
   integer,
   pgEnum,
@@ -61,6 +62,8 @@ export const leagues = pgTable(
     seasonYear: integer("season_year").notNull(),
     rosterSize: integer("roster_size").notNull().default(7),
     status: leagueStatusEnum("status").notNull().default("setup"),
+    /** Solo practice mode against EPA-ranked bot managers — never a real multi-user league. */
+    isPractice: boolean("is_practice").notNull().default(false),
     tradeWindowOpenDay: smallint("trade_window_open_day").notNull().default(1), // 1=Mon
     tradeWindowOpenTime: time("trade_window_open_time").notNull().default("08:00"),
     tradeWindowCloseDay: smallint("trade_window_close_day").notNull().default(3), // 3=Wed
@@ -88,14 +91,17 @@ export const leagueMembers = pgTable(
     leagueId: uuid("league_id")
       .notNull()
       .references(() => leagues.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id),
+    /** Null for bot members — bots have no real user account. */
+    userId: uuid("user_id").references(() => users.id),
     role: leagueRoleEnum("role").notNull().default("manager"),
     teamName: text("team_name").notNull(),
+    isBot: boolean("is_bot").notNull().default(false),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("league_members_league_user_unique").on(t.leagueId, t.userId)],
+  (t) => [
+    unique("league_members_league_user_unique").on(t.leagueId, t.userId),
+    check("bot_members_have_no_user", sql`${t.isBot} = true OR ${t.userId} IS NOT NULL`),
+  ],
 );
 
 export const rosters = pgTable("rosters", {

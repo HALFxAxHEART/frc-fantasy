@@ -169,6 +169,33 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.back-link {
+  display: inline-block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.back-link:hover {
+  color: var(--text);
+}
+
+.link-button {
+  background: none;
+  color: var(--primary);
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  align-self: flex-start;
+  text-decoration: underline;
+}
+
+.link-button:hover {
+  background: none;
+  color: var(--primary-hover);
+}
+
 .form-error {
   color: var(--danger);
   font-size: 0.9rem;
@@ -465,6 +492,25 @@ td {
 .team-pool-panel input {
   width: 100%;
   margin-bottom: 1rem;
+}
+
+.recommendations-list {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+}
+
+.recommendations-list .team-pool-name {
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 0;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
 }
 
 .team-pool-list {

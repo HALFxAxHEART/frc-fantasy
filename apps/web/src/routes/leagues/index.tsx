@@ -11,6 +11,9 @@ function LeaguesPage() {
       <header className="page-header">
         <h1>My Leagues</h1>
         <div>
+          <Link to="/practice/new" className="button-link">
+            Practice draft
+          </Link>
           <Link to="/leagues/join" className="button-link">
             Join with code
           </Link>

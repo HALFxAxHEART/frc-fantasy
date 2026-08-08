@@ -42,6 +42,38 @@ export async function ensureEventsForYearCached(year: number) {
   }
 }
 
+async function ensureDistrictsForYearCached(year: number) {
+  const [existing] = await db
+    .select({ key: schema.districts.key })
+    .from(schema.districts)
+    .where(eq(schema.districts.year, year))
+    .limit(1);
+  if (existing) return;
+
+  try {
+    const districts = await tbaClient.getDistricts(year);
+    for (const d of districts) {
+      await db
+        .insert(schema.districts)
+        .values({ key: d.key, abbreviation: d.abbreviation, displayName: d.display_name, year: d.year })
+        .onConflictDoNothing();
+    }
+  } catch (err) {
+    logger.warn("failed to lazily fetch districts for year", { year, error: String(err) });
+  }
+}
+
+export async function listDistricts(year?: number) {
+  const targetYear = year ?? new Date().getFullYear();
+  await ensureDistrictsForYearCached(targetYear);
+
+  return db
+    .select()
+    .from(schema.districts)
+    .where(eq(schema.districts.year, targetYear))
+    .orderBy(schema.districts.displayName);
+}
+
 export async function searchEvents(query?: string, year?: number, districtKey?: string) {
   if (year) await ensureEventsForYearCached(year);
 

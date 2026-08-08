@@ -43,9 +43,7 @@ export const draftRouter = router({
     return draft;
   }),
 
-  undo: protectedProcedure.input(leagueIdInput).mutation(async ({ input, ctx }) => {
-    const draft = await draftService.undoLastPick(input.leagueId, ctx.user.id);
-    broadcastDraftUpdate(input.leagueId);
-    return draft;
-  }),
+  getRecommendations: protectedProcedure
+    .input(leagueIdInput.extend({ limit: z.number().int().min(1).max(50).default(10) }))
+    .query(({ input, ctx }) => draftService.getRecommendations(input.leagueId, ctx.user.id, input.limit)),
 });

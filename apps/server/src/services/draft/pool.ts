@@ -1,6 +1,6 @@
 import { db, schema, type Database, type Tx } from "@frc-fantasy/db";
 import { and, eq, notInArray, sql } from "drizzle-orm";
-import { getEventTeams } from "../event";
+import { ensureEventsForYearCached, ensureEventTeamsCached, getEventTeams } from "../event";
 
 export interface PoolTeam {
   key: string;
@@ -27,6 +27,19 @@ export async function resolveDraftPool(league: League): Promise<DraftPool> {
 
   if (league.spatialTopology === "district") {
     if (!league.districtKey) throw new Error("district league missing districtKey");
+
+    // Cold-start fill: event_teams is otherwise only populated by the daily cron's
+    // active-window pass, which could leave a brand-new district league's pool empty
+    // for up to 24h. Cheap once warm — each call below is a single indexed check.
+    await ensureEventsForYearCached(league.seasonYear);
+    const districtEvents = await db
+      .select({ key: schema.events.key })
+      .from(schema.events)
+      .where(and(eq(schema.events.districtKey, league.districtKey), eq(schema.events.year, league.seasonYear)));
+    for (const e of districtEvents) {
+      await ensureEventTeamsCached(e.key);
+    }
+
     const rows = await db
       .selectDistinctOn([schema.teams.key], {
         key: schema.teams.key,

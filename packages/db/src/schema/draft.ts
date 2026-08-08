@@ -52,7 +52,7 @@ export const draftPicks = pgTable(
     round: integer("round").notNull(),
     leagueMemberId: uuid("league_member_id")
       .notNull()
-      .references(() => leagueMembers.id),
+      .references(() => leagueMembers.id, { onDelete: "cascade" }),
     teamKey: text("team_key").references(() => teams.key),
     madeAt: timestamp("made_at", { withTimezone: true }),
     isAutopick: boolean("is_autopick").notNull().default(false),

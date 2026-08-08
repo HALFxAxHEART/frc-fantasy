@@ -4,7 +4,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./trpc/router";
 import { createContext } from "./trpc/context";
 import { getTeamAvatar } from "./services/team";
-import { sweepExpiredDraftPicks } from "./services/draft/autopick";
+import { sweepBotPicks, sweepExpiredDraftPicks } from "./services/draft/autopick";
 import { draftRoomWebSocketHandlers, tryUpgradeDraftRoom } from "./ws/draft-room";
 import { setBroadcastServer } from "./ws/broadcast";
 import { runDailyIngest } from "./ingestion/jobs/daily-ingest";
@@ -72,6 +72,7 @@ setBroadcastServer(server);
 // batch jobs; this is live gameplay needing sub-minute granularity.
 setInterval(() => {
   sweepExpiredDraftPicks().catch((err) => logger.error("draft autopick sweep failed", { error: String(err) }));
+  sweepBotPicks().catch((err) => logger.error("draft bot-pick sweep failed", { error: String(err) }));
 }, 3000);
 
 if (env.JOBS_MODE === "in-process") {

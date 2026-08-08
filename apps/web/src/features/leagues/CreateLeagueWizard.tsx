@@ -14,9 +14,16 @@ export function CreateLeagueWizard() {
   const [commissionerTeamName, setCommissionerTeamName] = useState("");
   const [spatialTopology, setSpatialTopology] = useState<SpatialTopology>("global");
   const [districtKey, setDistrictKey] = useState("");
+  const [districtEntryMode, setDistrictEntryMode] = useState<"list" | "manual">("list");
   const [temporalTopology, setTemporalTopology] = useState<TemporalTopology>("season_long");
   const [tbaEventKey, setTbaEventKey] = useState("");
+  const [eventEntryMode, setEventEntryMode] = useState<"list" | "manual">("list");
   const [rosterSize, setRosterSize] = useState(DEFAULT_ROSTER_SIZE);
+
+  const districts = useQuery({
+    ...trpc.event.listDistricts.queryOptions({ year: CURRENT_YEAR }),
+    enabled: spatialTopology === "district",
+  });
 
   const upcomingEvents = useQuery({
     ...trpc.event.listUpcoming.queryOptions({ year: CURRENT_YEAR }),
@@ -77,15 +84,43 @@ export function CreateLeagueWizard() {
           />
         </div>
         {spatialTopology === "district" && (
-          <label>
-            District key
-            <input
-              value={districtKey}
-              onChange={(e) => setDistrictKey(e.target.value)}
-              placeholder="e.g. 2026fim, 2026ne, 2026pnw"
-              required
-            />
-          </label>
+          <>
+            {districtEntryMode === "list" ? (
+              <label>
+                District
+                <select value={districtKey} onChange={(e) => setDistrictKey(e.target.value)} required>
+                  <option value="" disabled>
+                    {districts.isLoading ? "Loading districts…" : "Select a district"}
+                  </option>
+                  {districts.data?.map((d) => (
+                    <option key={d.key} value={d.key}>
+                      {d.displayName} ({d.key})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label>
+                District code
+                <input
+                  value={districtKey}
+                  onChange={(e) => setDistrictKey(e.target.value)}
+                  placeholder="e.g. 2026fim, 2026ne, 2026pnw"
+                  required
+                />
+              </label>
+            )}
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                setDistrictKey("");
+                setDistrictEntryMode(districtEntryMode === "list" ? "manual" : "list");
+              }}
+            >
+              {districtEntryMode === "list" ? "Type a district code instead" : "Pick from list instead"}
+            </button>
+          </>
         )}
       </section>
 
@@ -112,19 +147,43 @@ export function CreateLeagueWizard() {
           />
         </div>
         {temporalTopology !== "season_long" && (
-          <label>
-            Event
-            <select value={tbaEventKey} onChange={(e) => setTbaEventKey(e.target.value)} required>
-              <option value="" disabled>
-                {upcomingEvents.isLoading ? "Loading events…" : "Select an upcoming event"}
-              </option>
-              {upcomingEvents.data?.map((event) => (
-                <option key={event.key} value={event.key}>
-                  {event.name} ({event.startDate})
-                </option>
-              ))}
-            </select>
-          </label>
+          <>
+            {eventEntryMode === "list" ? (
+              <label>
+                Event
+                <select value={tbaEventKey} onChange={(e) => setTbaEventKey(e.target.value)} required>
+                  <option value="" disabled>
+                    {upcomingEvents.isLoading ? "Loading events…" : "Select an upcoming event"}
+                  </option>
+                  {upcomingEvents.data?.map((event) => (
+                    <option key={event.key} value={event.key}>
+                      {event.name} ({event.startDate})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label>
+                Event code
+                <input
+                  value={tbaEventKey}
+                  onChange={(e) => setTbaEventKey(e.target.value)}
+                  placeholder="e.g. 2026mifim"
+                  required
+                />
+              </label>
+            )}
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                setTbaEventKey("");
+                setEventEntryMode(eventEntryMode === "list" ? "manual" : "list");
+              }}
+            >
+              {eventEntryMode === "list" ? "Type an event code instead" : "Pick from list instead"}
+            </button>
+          </>
         )}
       </section>
 

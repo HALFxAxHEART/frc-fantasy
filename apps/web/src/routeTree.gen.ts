@@ -15,6 +15,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LeaguesIndexRouteImport } from './routes/leagues/index'
 import { Route as LeaguesJoinRouteImport } from './routes/leagues/join'
 import { Route as LeaguesNewRouteImport } from './routes/leagues/new'
+import { Route as PracticeNewRouteImport } from './routes/practice/new'
 import { Route as TeamsIndexRouteImport } from './routes/teams/index'
 import { Route as TeamsTeamNumberRouteImport } from './routes/teams/$teamNumber'
 import { Route as LeaguesLeagueIdIndexRouteImport } from './routes/leagues/$leagueId/index'
@@ -51,6 +52,11 @@ const LeaguesJoinRoute = LeaguesJoinRouteImport.update({
 const LeaguesNewRoute = LeaguesNewRouteImport.update({
   id: '/leagues/new',
   path: '/leagues/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PracticeNewRoute = PracticeNewRouteImport.update({
+  id: '/practice/new',
+  path: '/practice/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TeamsIndexRoute = TeamsIndexRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/leagues/join': typeof LeaguesJoinRoute
   '/leagues/new': typeof LeaguesNewRoute
+  '/practice/new': typeof PracticeNewRoute
   '/teams/$teamNumber': typeof TeamsTeamNumberRoute
   '/leagues/': typeof LeaguesIndexRoute
   '/teams/': typeof TeamsIndexRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/leagues/join': typeof LeaguesJoinRoute
   '/leagues/new': typeof LeaguesNewRoute
+  '/practice/new': typeof PracticeNewRoute
   '/teams/$teamNumber': typeof TeamsTeamNumberRoute
   '/leagues': typeof LeaguesIndexRoute
   '/teams': typeof TeamsIndexRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/leagues/join': typeof LeaguesJoinRoute
   '/leagues/new': typeof LeaguesNewRoute
+  '/practice/new': typeof PracticeNewRoute
   '/teams/$teamNumber': typeof TeamsTeamNumberRoute
   '/leagues/': typeof LeaguesIndexRoute
   '/teams/': typeof TeamsIndexRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/leagues/join'
     | '/leagues/new'
+    | '/practice/new'
     | '/teams/$teamNumber'
     | '/leagues/'
     | '/teams/'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/leagues/join'
     | '/leagues/new'
+    | '/practice/new'
     | '/teams/$teamNumber'
     | '/leagues'
     | '/teams'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/leagues/join'
     | '/leagues/new'
+    | '/practice/new'
     | '/teams/$teamNumber'
     | '/leagues/'
     | '/teams/'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   LeaguesJoinRoute: typeof LeaguesJoinRoute
   LeaguesNewRoute: typeof LeaguesNewRoute
+  PracticeNewRoute: typeof PracticeNewRoute
   TeamsTeamNumberRoute: typeof TeamsTeamNumberRoute
   LeaguesIndexRoute: typeof LeaguesIndexRoute
   TeamsIndexRoute: typeof TeamsIndexRoute
@@ -242,6 +255,13 @@ declare module '@tanstack/react-router' {
       path: '/leagues/new'
       fullPath: '/leagues/new'
       preLoaderRoute: typeof LeaguesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practice/new': {
+      id: '/practice/new'
+      path: '/practice/new'
+      fullPath: '/practice/new'
+      preLoaderRoute: typeof PracticeNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/teams/': {
@@ -302,6 +322,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   LeaguesJoinRoute: LeaguesJoinRoute,
   LeaguesNewRoute: LeaguesNewRoute,
+  PracticeNewRoute: PracticeNewRoute,
   TeamsTeamNumberRoute: TeamsTeamNumberRoute,
   LeaguesIndexRoute: LeaguesIndexRoute,
   TeamsIndexRoute: TeamsIndexRoute,

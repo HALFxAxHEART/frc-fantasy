@@ -8,6 +8,7 @@ import { useDraftRoomSocket } from "./useDraftRoomSocket";
 import { StartDraftPanel } from "./StartDraftPanel";
 import { DraftControls } from "./DraftControls";
 import { DraftBoard } from "./DraftBoard";
+import { RecommendationsPanel } from "./RecommendationsPanel";
 import { TeamPoolPanel } from "./TeamPoolPanel";
 
 interface DraftRoomProps {
@@ -68,6 +69,7 @@ export function DraftRoom({ leagueId }: DraftRoomProps) {
         picks={picks}
         onViewTeam={setViewingTeamNumber}
       />
+      <RecommendationsPanel leagueId={leagueId} isMyTurn={isMyTurn} onViewTeam={setViewingTeamNumber} />
       <TeamPoolPanel
         leagueId={leagueId}
         isMyTurn={isMyTurn}

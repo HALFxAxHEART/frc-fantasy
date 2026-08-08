@@ -38,7 +38,12 @@ export async function cachedFetch<T>(options: CachedFetchOptions): Promise<T> {
     requestHeaders["If-None-Match"] = existing.etag;
   }
 
-  const response = await fetch(url, { headers: requestHeaders });
+  let response: Response;
+  try {
+    response = await fetch(url, { headers: requestHeaders, signal: AbortSignal.timeout(10_000) });
+  } catch (err) {
+    throw new Error(`${source} request timed out or failed to connect (${url}): ${String(err)}`);
+  }
 
   if (response.status === 304 && existing) {
     logger.debug("cache hit (304)", { source, endpointKey });

@@ -22,6 +22,7 @@ export function LeagueHome({ leagueId }: LeagueHomeProps) {
       <header>
         <h1>{l.name}</h1>
         <div className="badge-row">
+          {l.isPractice && <span className="badge">Practice</span>}
           <span className="badge">{l.spatialTopology === "district" ? `District: ${l.districtKey}` : "Global"}</span>
           <span className="badge">{l.temporalTopology.replace(/_/g, " ")}</span>
           <span className="badge">{l.rosterSize} roster spots</span>
@@ -54,7 +55,9 @@ export function LeagueHome({ leagueId }: LeagueHomeProps) {
           {members.data?.map((m) => (
             <li key={m.id}>
               <strong>{m.teamName}</strong>{" "}
-              <span className="muted">{m.role === "commissioner" ? "(Commissioner)" : ""}</span>
+              <span className="muted">
+                {m.isBot ? "(Bot)" : m.role === "commissioner" ? "(Commissioner)" : ""}
+              </span>
             </li>
           ))}
         </ul>

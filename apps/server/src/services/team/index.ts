@@ -77,7 +77,7 @@ async function ensureAvatarCached(teamKey: string) {
 }
 
 /** One Statbotics call returns every year of EPA data — powers the trajectory chart. */
-async function ensureEpaHistoryCached(teamNumber: number, teamKey: string) {
+export async function ensureEpaHistoryCached(teamNumber: number, teamKey: string) {
   const [existing] = await db
     .select({ id: schema.epaSnapshots.id })
     .from(schema.epaSnapshots)

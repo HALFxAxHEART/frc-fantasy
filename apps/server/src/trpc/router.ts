@@ -7,6 +7,7 @@ import { eventRouter } from "./routers/event";
 import { draftRouter } from "./routers/draft";
 import { tradeRouter } from "./routers/trade";
 import { scoringRouter } from "./routers/scoring";
+import { practiceRouter } from "./routers/practice";
 
 export const appRouter = router({
   auth: authRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   draft: draftRouter,
   trade: tradeRouter,
   scoring: scoringRouter,
+  practice: practiceRouter,
 });
 
 export type AppRouter = typeof appRouter;

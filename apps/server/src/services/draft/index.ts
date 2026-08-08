@@ -2,6 +2,7 @@ import { db, schema } from "@frc-fantasy/db";
 import { and, eq, ilike, notInArray } from "drizzle-orm";
 import { ForbiddenError, ValidationError } from "../../lib/errors";
 import { requireMembership } from "../league";
+import { rankAvailableTeamsByEpa } from "./bot";
 import { claimPick, getLeagueRow, getPickByNumber, lockDraft, pickDeadline, type Draft, type DraftPick } from "./core";
 import { alreadyDraftedKeys, poolSize, resolveDraftPool, type PoolTeam } from "./pool";
 
@@ -79,6 +80,24 @@ export async function getAvailablePool(
     .limit(LIMIT + 1);
 
   return { bounded: false, teams: rows.slice(0, LIMIT), truncated: rows.length > LIMIT };
+}
+
+/**
+ * EPA-ranked "best available" list — the same ranking the practice-draft bot picks
+ * from, surfaced to the human during their own turn. Only meaningful for bounded
+ * pools (practice drafts are restricted to those); returns empty for an unbounded
+ * global season-long pool rather than trying to rank thousands of teams.
+ */
+export async function getRecommendations(leagueId: string, userId: string, limit: number): Promise<PoolTeam[]> {
+  await requireMembership(leagueId, userId);
+
+  const league = await getLeagueRow(db, leagueId);
+  const [draft] = await db.select({ id: schema.drafts.id }).from(schema.drafts).where(eq(schema.drafts.leagueId, leagueId)).limit(1);
+  if (!draft) return [];
+
+  const pool = await resolveDraftPool(league);
+  const ranked = await rankAvailableTeamsByEpa(db, draft.id, pool);
+  return ranked.slice(0, limit);
 }
 
 export async function createDraft(leagueId: string, actingUserId: string): Promise<Draft> {
@@ -197,69 +216,6 @@ export async function resumeDraft(leagueId: string, actingUserId: string): Promi
       .set({ status: "in_progress", currentPickDeadline: pickDeadline(draft.secondsPerPick) })
       .where(eq(schema.drafts.id, draft.id))
       .returning();
-    return updated!;
-  });
-}
-
-export async function undoLastPick(leagueId: string, actingUserId: string): Promise<Draft> {
-  await requireCommissioner(leagueId, actingUserId);
-
-  return db.transaction(async (tx) => {
-    const draft = await lockDraft(tx, leagueId);
-    const league = await getLeagueRow(tx, leagueId);
-
-    if (draft.status !== "in_progress" && draft.status !== "paused" && draft.status !== "completed") {
-      throw new ValidationError("There's nothing to undo yet.");
-    }
-
-    const wasCompleted = draft.status === "completed";
-    const targetPickNumber = wasCompleted ? draft.currentPickNumber : draft.currentPickNumber - 1;
-    if (targetPickNumber < 1) throw new ValidationError("There are no picks to undo yet.");
-
-    const targetPick = await getPickByNumber(tx, draft.id, targetPickNumber);
-    if (!targetPick.teamKey) throw new ValidationError("There are no picks to undo yet.");
-
-    const [roster] = await tx
-      .select({ id: schema.rosters.id })
-      .from(schema.rosters)
-      .where(eq(schema.rosters.leagueMemberId, targetPick.leagueMemberId))
-      .limit(1);
-    if (roster) {
-      // Hard delete, not the soft-delete (droppedAt) used for real trades/drops —
-      // an undone draft pick was never a genuine roster event.
-      await tx
-        .delete(schema.rosterSlots)
-        .where(
-          and(
-            eq(schema.rosterSlots.rosterId, roster.id),
-            eq(schema.rosterSlots.teamKey, targetPick.teamKey),
-            eq(schema.rosterSlots.acquiredVia, "draft"),
-          ),
-        );
-    }
-
-    await tx.update(schema.draftPicks).set({ teamKey: null, madeAt: null, isAutopick: false }).where(eq(schema.draftPicks.id, targetPick.id));
-
-    // Undoing a pick from a paused draft stays paused — a commissioner correcting a
-    // mistake mid-discussion shouldn't accidentally restart the clock.
-    const newStatus = wasCompleted ? "in_progress" : draft.status;
-    const newDeadline = newStatus === "in_progress" ? pickDeadline(draft.secondsPerPick) : null;
-
-    const [updated] = await tx
-      .update(schema.drafts)
-      .set({
-        currentPickNumber: targetPickNumber,
-        status: newStatus,
-        completedAt: wasCompleted ? null : draft.completedAt,
-        currentPickDeadline: newDeadline,
-      })
-      .where(eq(schema.drafts.id, draft.id))
-      .returning();
-
-    if (wasCompleted) {
-      await tx.update(schema.leagues).set({ status: "drafting" }).where(eq(schema.leagues.id, league.id));
-    }
-
     return updated!;
   });
 }

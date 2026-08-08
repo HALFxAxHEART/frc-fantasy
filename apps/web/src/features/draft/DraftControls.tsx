@@ -15,9 +15,8 @@ export function DraftControls({ leagueId, status, isCommissioner }: DraftControl
 
   const pause = useMutation(trpc.draft.pause.mutationOptions({ onSuccess: invalidate }));
   const resume = useMutation(trpc.draft.resume.mutationOptions({ onSuccess: invalidate }));
-  const undo = useMutation(trpc.draft.undo.mutationOptions({ onSuccess: invalidate }));
 
-  const error = pause.error ?? resume.error ?? undo.error;
+  const error = pause.error ?? resume.error;
 
   return (
     <div className="draft-controls">
@@ -34,15 +33,6 @@ export function DraftControls({ leagueId, status, isCommissioner }: DraftControl
               Resume
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm("Undo the last pick?")) undo.mutate({ leagueId });
-            }}
-            disabled={undo.isPending}
-          >
-            Undo Last Pick
-          </button>
         </>
       )}
       {error && <p className="form-error">{error.message}</p>}
