@@ -1,5 +1,11 @@
 import { teamProfileSchema, teamSearchSchema } from "@frc-fantasy/shared";
-import { getTeamAwards, getTeamProfile, getTeamYearStats, searchTeams } from "../../services/team";
+import {
+  getTeamAwards,
+  getTeamDistrictPoints,
+  getTeamProfile,
+  getTeamYearStats,
+  searchTeams,
+} from "../../services/team";
 import { publicProcedure, router } from "../trpc";
 
 export const teamRouter = router({
@@ -12,4 +18,8 @@ export const teamRouter = router({
     .query(({ input }) => getTeamYearStats(input.teamNumber)),
 
   getAwards: publicProcedure.input(teamProfileSchema).query(({ input }) => getTeamAwards(input.teamNumber)),
+
+  getDistrictPoints: publicProcedure
+    .input(teamProfileSchema)
+    .query(({ input }) => getTeamDistrictPoints(input.teamNumber)),
 });

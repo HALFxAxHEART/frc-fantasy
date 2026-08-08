@@ -37,10 +37,17 @@ async function ensureTeamCached(teamNumber: number) {
   }
   if (!team) throw new NotFoundError(`Team ${teamNumber}`);
 
-  await ensureAvatarCached(teamKey);
-  await ensureEpaHistoryCached(teamNumber, teamKey);
-  await ensureAwardsCached(teamKey);
-  await ensureHistoricalWinRateCached(teamKey);
+  // Independent of each other — each already swallows its own errors internally
+  // (logs + returns), so a slow/failing one can't block or fail the others. Run in
+  // parallel: sequentially, a team with a long history could chain dozens of TBA/
+  // Statbotics round-trips (see ensureHistoricalWinRateCached) and feel like it
+  // hangs even with a per-call timeout.
+  await Promise.all([
+    ensureAvatarCached(teamKey),
+    ensureEpaHistoryCached(teamNumber, teamKey),
+    ensureAwardsCached(teamKey),
+    ensureHistoricalWinRateCached(teamKey),
+  ]);
 
   return team;
 }
@@ -164,17 +171,25 @@ async function ensureAwardsCached(teamKey: string) {
 
   try {
     const allAwards = await tbaClient.getTeamAwardsAll(teamKey);
-    const seenEventKeys = new Set<string>();
-    for (const a of allAwards) {
-      if (!seenEventKeys.has(a.event_key)) {
-        seenEventKeys.add(a.event_key);
+    const eventKeys = [...new Set(allAwards.map((a) => a.event_key))];
+
+    // A team with a long history can have awards spread across dozens of events —
+    // backfilling those event stubs one at a time (each its own TBA round-trip) was
+    // the single biggest contributor to a profile lookup feeling hung.
+    const cachedEventKeys = new Set<string>();
+    await Promise.all(
+      eventKeys.map(async (eventKey) => {
         try {
-          await ensureEventCached(a.event_key);
+          await ensureEventCached(eventKey);
+          cachedEventKeys.add(eventKey);
         } catch (err) {
-          logger.warn("failed to backfill event stub for award", { eventKey: a.event_key, error: String(err) });
-          continue;
+          logger.warn("failed to backfill event stub for award", { eventKey, error: String(err) });
         }
-      }
+      }),
+    );
+
+    for (const a of allAwards) {
+      if (!cachedEventKeys.has(a.event_key)) continue;
       const recipient = a.recipient_list.find((r) => r.team_key === teamKey) ?? a.recipient_list[0];
       await db
         .insert(schema.awards)
@@ -208,30 +223,40 @@ async function ensureHistoricalWinRateCached(teamKey: string) {
 
   try {
     const years = await tbaClient.getTeamYearsParticipated(teamKey);
-    for (const year of years) {
-      const matches = await tbaClient.getTeamMatchesSimpleForYear(teamKey, year);
-      let wins = 0;
-      let losses = 0;
-      let ties = 0;
-      const eventsSeen = new Set<string>();
-      for (const m of matches) {
-        if (m.comp_level !== "qm") continue;
-        const onRed = m.alliances.red.team_keys.includes(teamKey);
-        const onBlue = m.alliances.blue.team_keys.includes(teamKey);
-        if (!onRed && !onBlue) continue;
-        eventsSeen.add(m.event_key);
-        if (!m.winning_alliance) continue;
-        const won = (onRed && m.winning_alliance === "red") || (onBlue && m.winning_alliance === "blue");
-        const lost = (onRed && m.winning_alliance === "blue") || (onBlue && m.winning_alliance === "red");
-        if (won) wins += 1;
-        else if (lost) losses += 1;
-        else ties += 1;
-      }
-      await db
-        .insert(schema.teamYearStats)
-        .values({ teamKey, year, wins, losses, ties, eventsPlayed: eventsSeen.size })
-        .onConflictDoNothing();
-    }
+
+    // Each year's matches are an independent TBA round-trip — a long-tenured team
+    // (Team RUSH-style, 25+ years) sequentially chained dozens of these and was the
+    // single biggest contributor to a profile lookup feeling hung.
+    await Promise.all(
+      years.map(async (year) => {
+        try {
+          const matches = await tbaClient.getTeamMatchesSimpleForYear(teamKey, year);
+          let wins = 0;
+          let losses = 0;
+          let ties = 0;
+          const eventsSeen = new Set<string>();
+          for (const m of matches) {
+            if (m.comp_level !== "qm") continue;
+            const onRed = m.alliances.red.team_keys.includes(teamKey);
+            const onBlue = m.alliances.blue.team_keys.includes(teamKey);
+            if (!onRed && !onBlue) continue;
+            eventsSeen.add(m.event_key);
+            if (!m.winning_alliance) continue;
+            const won = (onRed && m.winning_alliance === "red") || (onBlue && m.winning_alliance === "blue");
+            const lost = (onRed && m.winning_alliance === "blue") || (onBlue && m.winning_alliance === "red");
+            if (won) wins += 1;
+            else if (lost) losses += 1;
+            else ties += 1;
+          }
+          await db
+            .insert(schema.teamYearStats)
+            .values({ teamKey, year, wins, losses, ties, eventsPlayed: eventsSeen.size })
+            .onConflictDoNothing();
+        } catch (err) {
+          logger.warn("failed to backfill historical win rate for year", { teamKey, year, error: String(err) });
+        }
+      }),
+    );
   } catch (err) {
     logger.warn("failed to backfill historical win rate", { teamKey, error: String(err) });
   }
@@ -303,6 +328,53 @@ export async function getTeamYearStats(teamNumber: number) {
     .from(schema.teamYearStats)
     .where(eq(schema.teamYearStats.teamKey, teamKey))
     .orderBy(schema.teamYearStats.year);
+}
+
+export interface TeamDistrictPointsSeason {
+  year: number;
+  totalPoints: number;
+  eventCount: number;
+}
+
+/**
+ * Sourced from team_event_scores — the same TBA-authoritative district points cache
+ * the scoring engine populates. Only reflects events already synced (via the daily
+ * cron's active-window pass, a league that references them, or a league's standings
+ * computation touching this team) — no additional career-wide backfill here, since
+ * a heavily-decorated team can have 100+ historical events and this page is already
+ * the slowest one in the app on a cold cache.
+ */
+export async function getTeamDistrictPoints(teamNumber: number): Promise<{
+  seasons: TeamDistrictPointsSeason[];
+  averagePerSeason: number | null;
+}> {
+  const teamKey = teamKeyFromNumber(teamNumber);
+
+  const rows = await db
+    .select({
+      year: schema.events.year,
+      totalPoints: schema.teamEventScores.totalPoints,
+    })
+    .from(schema.teamEventScores)
+    .innerJoin(schema.events, eq(schema.teamEventScores.eventKey, schema.events.key))
+    .where(eq(schema.teamEventScores.teamKey, teamKey));
+
+  const byYear = new Map<number, { totalPoints: number; eventCount: number }>();
+  for (const row of rows) {
+    const existing = byYear.get(row.year) ?? { totalPoints: 0, eventCount: 0 };
+    existing.totalPoints += Number(row.totalPoints);
+    existing.eventCount += 1;
+    byYear.set(row.year, existing);
+  }
+
+  const seasons = [...byYear.entries()]
+    .map(([year, v]) => ({ year, totalPoints: v.totalPoints, eventCount: v.eventCount }))
+    .sort((a, b) => b.year - a.year);
+
+  const averagePerSeason =
+    seasons.length > 0 ? seasons.reduce((sum, s) => sum + s.totalPoints, 0) / seasons.length : null;
+
+  return { seasons, averagePerSeason };
 }
 
 export async function getTeamAwards(teamNumber: number) {

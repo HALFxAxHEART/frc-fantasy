@@ -1,7 +1,12 @@
 import { db, schema } from "@frc-fantasy/db";
 import { and, eq } from "drizzle-orm";
-import { INVITE_CODE_ALPHABET, INVITE_CODE_LENGTH, type CreateLeagueInput } from "@frc-fantasy/shared";
-import { NotFoundError, ValidationError } from "../../lib/errors";
+import {
+  INVITE_CODE_ALPHABET,
+  INVITE_CODE_LENGTH,
+  type CreateLeagueInput,
+  type UpdateLeagueSettingsInput,
+} from "@frc-fantasy/shared";
+import { ForbiddenError, NotFoundError, ValidationError } from "../../lib/errors";
 
 function generateInviteCode(): string {
   let code = "";
@@ -99,6 +104,12 @@ export async function requireMembership(leagueId: string, userId: string) {
   return member;
 }
 
+export async function requireCommissioner(leagueId: string, userId: string) {
+  const member = await requireMembership(leagueId, userId);
+  if (member.role !== "commissioner") throw new ForbiddenError("Only the league commissioner can do that.");
+  return member;
+}
+
 export async function getLeagueById(leagueId: string, userId: string) {
   await requireMembership(leagueId, userId);
   const [league] = await db.select().from(schema.leagues).where(eq(schema.leagues.id, leagueId)).limit(1);
@@ -117,4 +128,51 @@ export async function listMyLeagues(userId: string) {
 export async function listMembers(leagueId: string, userId: string) {
   await requireMembership(leagueId, userId);
   return db.select().from(schema.leagueMembers).where(eq(schema.leagueMembers.leagueId, leagueId));
+}
+
+/** Cascades to members/rosters/roster_slots/draft/draft_picks/scoring via FK cascades. */
+export async function deleteLeague(leagueId: string, userId: string): Promise<void> {
+  await requireCommissioner(leagueId, userId);
+  await db.delete(schema.leagues).where(eq(schema.leagues.id, leagueId));
+}
+
+export async function kickMember(leagueId: string, targetMemberId: string, actingUserId: string): Promise<void> {
+  await requireCommissioner(leagueId, actingUserId);
+
+  const [target] = await db
+    .select()
+    .from(schema.leagueMembers)
+    .where(and(eq(schema.leagueMembers.id, targetMemberId), eq(schema.leagueMembers.leagueId, leagueId)))
+    .limit(1);
+  if (!target) throw new NotFoundError("League member");
+  if (target.role === "commissioner") {
+    throw new ValidationError("The commissioner can't be removed — delete the league instead.");
+  }
+
+  // draft_picks.league_member_id cascades on delete, which would silently remove
+  // that member's picks and leave a hole in the pick-number sequence a draft in any
+  // state depends on being dense. Restarting the draft first clears that dependency.
+  const [draft] = await db.select({ id: schema.drafts.id }).from(schema.drafts).where(eq(schema.drafts.leagueId, leagueId)).limit(1);
+  if (draft) {
+    throw new ValidationError("Can't remove a member after the draft has started — restart the draft first.");
+  }
+
+  await db.delete(schema.leagueMembers).where(eq(schema.leagueMembers.id, targetMemberId));
+}
+
+export async function updateLeagueSettings(leagueId: string, userId: string, input: UpdateLeagueSettingsInput) {
+  const league = await getLeagueById(leagueId, userId);
+  await requireCommissioner(leagueId, userId);
+
+  if (input.rosterSize !== undefined && input.rosterSize !== league.rosterSize && league.status !== "setup") {
+    throw new ValidationError("Roster size can only be changed before the draft starts.");
+  }
+
+  const [updated] = await db
+    .update(schema.leagues)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(schema.leagues.id, leagueId))
+    .returning();
+  if (!updated) throw new NotFoundError("League");
+  return updated;
 }

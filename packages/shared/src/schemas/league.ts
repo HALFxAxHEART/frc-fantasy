@@ -35,6 +35,17 @@ export const joinLeagueSchema = z.object({
 });
 export type JoinLeagueInput = z.infer<typeof joinLeagueSchema>;
 
+export const updateLeagueSettingsSchema = z.object({
+  name: z.string().trim().min(3).max(80).optional(),
+  rosterSize: z.number().int().min(1).max(30).optional(),
+  tradeWindowOpenDay: z.number().int().min(1).max(7).optional(),
+  tradeWindowOpenTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  tradeWindowCloseDay: z.number().int().min(1).max(7).optional(),
+  tradeWindowCloseTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  tradeWindowTimezone: z.string().trim().min(1).max(60).optional(),
+});
+export type UpdateLeagueSettingsInput = z.infer<typeof updateLeagueSettingsSchema>;
+
 export const createPracticeDraftSchema = leagueTopologyShape
   .extend({
     commissionerTeamName: z.string().trim().min(2).max(60),

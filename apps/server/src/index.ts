@@ -28,6 +28,12 @@ async function serveStatic(pathname: string): Promise<Response> {
 
 const server = Bun.serve({
   port: env.PORT,
+  // Bun's default per-request idle timeout is 10s — too tight for a team-profile
+  // lookup that lazily backfills from TBA/Statbotics on a cold cache (found live:
+  // Bun was silently killing the connection mid-request, which looked identical to
+  // "doesn't work" from the browser). 60s comfortably covers a cold profile fetch
+  // even under rate-limiter contention from a concurrent ingest run.
+  idleTimeout: 60,
   async fetch(req, srv) {
     const url = new URL(req.url);
 

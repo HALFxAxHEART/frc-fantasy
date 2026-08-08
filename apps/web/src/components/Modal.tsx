@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 interface ModalProps {
   onClose: () => void;
@@ -12,7 +13,7 @@ export function Modal({ onClose, children }: ModalProps) {
         <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
           ×
         </button>
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
       </div>
     </div>
   );

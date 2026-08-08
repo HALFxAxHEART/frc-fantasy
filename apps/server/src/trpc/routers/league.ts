@@ -1,13 +1,18 @@
 import { z } from "zod";
-import { createLeagueSchema, joinLeagueSchema } from "@frc-fantasy/shared";
+import { createLeagueSchema, joinLeagueSchema, updateLeagueSettingsSchema } from "@frc-fantasy/shared";
 import {
   createLeague,
+  deleteLeague,
   getLeagueById,
   joinLeagueByInviteCode,
+  kickMember,
   listMembers,
   listMyLeagues,
+  updateLeagueSettings,
 } from "../../services/league";
 import { protectedProcedure, router } from "../trpc";
+
+const leagueIdInput = z.object({ leagueId: z.string().uuid() });
 
 export const leagueRouter = router({
   create: protectedProcedure
@@ -20,13 +25,23 @@ export const leagueRouter = router({
     .input(joinLeagueSchema)
     .mutation(({ input, ctx }) => joinLeagueByInviteCode(input.inviteCode, ctx.user.id, input.teamName)),
 
-  getById: protectedProcedure
-    .input(z.object({ leagueId: z.string().uuid() }))
-    .query(({ input, ctx }) => getLeagueById(input.leagueId, ctx.user.id)),
+  getById: protectedProcedure.input(leagueIdInput).query(({ input, ctx }) => getLeagueById(input.leagueId, ctx.user.id)),
 
   listMine: protectedProcedure.query(({ ctx }) => listMyLeagues(ctx.user.id)),
 
   listMembers: protectedProcedure
-    .input(z.object({ leagueId: z.string().uuid() }))
+    .input(leagueIdInput)
     .query(({ input, ctx }) => listMembers(input.leagueId, ctx.user.id)),
+
+  delete: protectedProcedure
+    .input(leagueIdInput)
+    .mutation(({ input, ctx }) => deleteLeague(input.leagueId, ctx.user.id)),
+
+  kickMember: protectedProcedure
+    .input(leagueIdInput.extend({ memberId: z.string().uuid() }))
+    .mutation(({ input, ctx }) => kickMember(input.leagueId, input.memberId, ctx.user.id)),
+
+  updateSettings: protectedProcedure
+    .input(leagueIdInput.extend({ settings: updateLeagueSettingsSchema }))
+    .mutation(({ input, ctx }) => updateLeagueSettings(input.leagueId, ctx.user.id, input.settings)),
 });

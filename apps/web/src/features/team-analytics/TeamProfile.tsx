@@ -21,6 +21,9 @@ interface TeamProfileProps {
 export function TeamProfile({ teamNumber }: TeamProfileProps) {
   const trpc = useTRPC();
   const profile = useQuery(trpc.team.getProfile.queryOptions({ teamNumber }));
+  // Independent query — district points come from a separate, much cheaper local
+  // read (no external API calls), so it shouldn't wait on the slower profile fetch.
+  const districtPoints = useQuery(trpc.team.getDistrictPoints.queryOptions({ teamNumber }));
 
   if (profile.isLoading) return <p>Loading team profile…</p>;
   if (profile.isError) return <p className="form-error">{profile.error.message}</p>;
@@ -68,6 +71,14 @@ export function TeamProfile({ teamNumber }: TeamProfileProps) {
           <span className="stat-value">{awards.length}</span>
           <span className="stat-label">Awards won</span>
         </div>
+        <div className="stat-tile">
+          <span className="stat-value">
+            {districtPoints.data?.averagePerSeason != null
+              ? Math.round(districtPoints.data.averagePerSeason)
+              : "—"}
+          </span>
+          <span className="stat-label">Avg district points / season</span>
+        </div>
       </section>
 
       {epaChartData.length > 0 && (
@@ -112,6 +123,37 @@ export function TeamProfile({ teamNumber }: TeamProfileProps) {
           </table>
         </section>
       )}
+
+      <section className="card">
+        <h2>District points by season</h2>
+        {districtPoints.isLoading && <p className="muted">Loading…</p>}
+        {districtPoints.data && districtPoints.data.seasons.length === 0 && (
+          <p className="muted">
+            No district points synced yet for this team — this fills in once one of its events has been
+            scored, either by the nightly sync or by a league that rosters it.
+          </p>
+        )}
+        {districtPoints.data && districtPoints.data.seasons.length > 0 && (
+          <table>
+            <thead>
+              <tr>
+                <th>Season</th>
+                <th>District points</th>
+                <th>Events scored</th>
+              </tr>
+            </thead>
+            <tbody>
+              {districtPoints.data.seasons.map((s) => (
+                <tr key={s.year}>
+                  <td>{s.year}</td>
+                  <td>{s.totalPoints}</td>
+                  <td>{s.eventCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       {awards.length > 0 && (
         <section className="card">

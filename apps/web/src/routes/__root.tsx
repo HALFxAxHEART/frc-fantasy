@@ -1,5 +1,6 @@
-import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
+import { createRootRouteWithContext, Link, Outlet, useLocation } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { useCurrentUser } from "../lib/auth-client";
 
 interface RouterContext {
@@ -12,6 +13,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootLayout() {
   const { user, isLoading } = useCurrentUser();
+  const { pathname } = useLocation();
 
   return (
     <div className="app-shell">
@@ -34,7 +36,10 @@ function RootLayout() {
         )}
       </nav>
       <main className="app-main">
-        <Outlet />
+        {/* Remounts on navigation so a crashed page can recover on its own without a hard refresh. */}
+        <ErrorBoundary key={pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

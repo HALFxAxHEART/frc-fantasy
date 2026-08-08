@@ -389,6 +389,53 @@ td {
   padding: 0;
 }
 
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.member-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.danger-zone {
+  border-color: var(--danger);
+}
+
+.danger-zone-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.danger-zone-row:first-of-type {
+  border-top: none;
+}
+
+.danger-zone-row p {
+  margin: 0.25rem 0 0;
+}
+
+.danger-button {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  white-space: nowrap;
+}
+
+.danger-button:hover {
+  background: var(--danger);
+  color: white;
+}
+
 .settings-list {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -406,6 +453,10 @@ td {
 .coming-soon {
   text-align: center;
   padding: 3rem 1.5rem;
+}
+
+.error-boundary {
+  text-align: center;
 }
 
 .draft-room {

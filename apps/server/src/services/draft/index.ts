@@ -1,5 +1,5 @@
 import { db, schema } from "@frc-fantasy/db";
-import { and, eq, ilike, notInArray } from "drizzle-orm";
+import { and, eq, ilike, inArray, notInArray } from "drizzle-orm";
 import { ForbiddenError, ValidationError } from "../../lib/errors";
 import { requireMembership } from "../league";
 import { rankAvailableTeamsByEpa } from "./bot";
@@ -217,6 +217,36 @@ export async function resumeDraft(leagueId: string, actingUserId: string): Promi
       .where(eq(schema.drafts.id, draft.id))
       .returning();
     return updated!;
+  });
+}
+
+/**
+ * Full reset: clears every draft-acquired roster slot, deletes the draft (cascades
+ * to its picks), and puts the league back in "setup" so a fresh draft can be
+ * created. Locked the same way every other draft mutation is, so it can't race a
+ * pick, an autopick sweep tick, or a bot pick landing mid-restart.
+ */
+export async function restartDraft(leagueId: string, actingUserId: string): Promise<void> {
+  await requireCommissioner(leagueId, actingUserId);
+
+  await db.transaction(async (tx) => {
+    await lockDraft(tx, leagueId);
+
+    const members = await tx.select({ id: schema.leagueMembers.id }).from(schema.leagueMembers).where(eq(schema.leagueMembers.leagueId, leagueId));
+    const memberIds = members.map((m) => m.id);
+    if (memberIds.length > 0) {
+      const rosters = await tx
+        .select({ id: schema.rosters.id })
+        .from(schema.rosters)
+        .where(inArray(schema.rosters.leagueMemberId, memberIds));
+      const rosterIds = rosters.map((r) => r.id);
+      if (rosterIds.length > 0) {
+        await tx.delete(schema.rosterSlots).where(and(inArray(schema.rosterSlots.rosterId, rosterIds), eq(schema.rosterSlots.acquiredVia, "draft")));
+      }
+    }
+
+    await tx.delete(schema.drafts).where(eq(schema.drafts.leagueId, leagueId));
+    await tx.update(schema.leagues).set({ status: "setup" }).where(eq(schema.leagues.id, leagueId));
   });
 }
 

@@ -46,4 +46,9 @@ export const draftRouter = router({
   getRecommendations: protectedProcedure
     .input(leagueIdInput.extend({ limit: z.number().int().min(1).max(50).default(10) }))
     .query(({ input, ctx }) => draftService.getRecommendations(input.leagueId, ctx.user.id, input.limit)),
+
+  restart: protectedProcedure.input(leagueIdInput).mutation(async ({ input, ctx }) => {
+    await draftService.restartDraft(input.leagueId, ctx.user.id);
+    broadcastDraftUpdate(input.leagueId);
+  }),
 });
