@@ -15,6 +15,7 @@ RUN cd apps/web && bun run build
 
 FROM base AS runtime
 ENV NODE_ENV=production
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
